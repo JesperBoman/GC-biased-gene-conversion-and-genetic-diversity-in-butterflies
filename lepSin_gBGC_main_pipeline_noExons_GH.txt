@@ -1,0 +1,353 @@
+#### Ancestral state inference
+
+#Produce lists of SNPs in which outgroups are all homozygous reference (REF) or homozygous alternative (ALT). N.B no missing data allowed here.
+
+#Script: AA_in_outgroups.sh - sub-dependency: GT_AA_outgroups_HOM_ref_*focal pop*.awk and GT_AA_outgroups_HOM_alt_*focal pop*.awk
+
+#Example from Kaz-juv
+
+awk -v N=2 'n>=N;/Swe-sin-92C/{++n}' ../removed_repeat_content.vcf  | awk -f ../GT_AA_outgroups_HOM_ref_lepJuv-Kaz.awk > AA_in_outgroup_HOM_ref_lepJuv-Kaz.list_test &
+
+awk -v N=2 'n>=N;/Swe-sin-92C/{++n}' ../removed_repeat_content.vcf  | awk -f ../GT_AA_outgroups_HOM_alt_lepJuv-Kaz.awk > AA_in_outgroup_HOM_alt_lepJuv-Kaz.list_test &
+
+wait
+
+
+
+awk '{print $1 "\t" $2 "\t" $3}' ../DAF_outgroup_10r20j_removed_repeat_content_swe_sin/AA_in_outgroup_HOM_ref_rep_10r20j.list > ancestral_state_list_outTough_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $4}' AA_in_outgroup_HOM_alt_rep_10r20j.list >> ancestral_state_list_outTough_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $3}' ../DAF_outgroup_30s20j_removed_repeat_content_spa_rea/AA_in_outgroup_HOM_ref_lepRea.list >> ancestral_state_list_outTough_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $4}' AA_in_outgroup_HOM_alt_lepRea.list >> ancestral_state_list_outTough_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $3}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_kaz_juv/AA_in_outgroup_HOM_ref_lepJuv-Kaz.list >> ancestral_state_list_outTough_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $4}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_kaz_juv/AA_in_outgroup_HOM_alt_lepJuv-Kaz.list >> ancestral_state_list_outTough_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $3}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_ire_juv/AA_in_outgroup_HOM_ref_lepJuv-Ire.list >> ancestral_state_list_outTough_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $4}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_ire_juv/AA_in_outgroup_HOM_alt_lepJuv-Ire.list >> ancestral_state_list_outTough_JuveSpecial
+
+
+sort -u ancestral_state_list_outTough_JuveSpecial > ancestral_state_list_outTough_uniq_JuveSpecial
+
+awk '{print $1 "\t" $2-1 "\t" $2}'  ancestral_state_list_outTough_uniq_JuveSpecial > ancestral_state_list_outTough_uniq_JuveSpecial.bed
+
+
+ml bioinfo-tools BEDTools/2.27.1
+
+awk 'NR!=1{if($3=="exon"){print $1 "\t" $4-1 "\t" $5}}' leptidea_sinapis_rc1.gff  | sort -k1,1 -k2,2n > lepSin_Exons.bed
+awk 'NR!=1{if($3=="exon"){print $1 "\t" $4 "\t" $5}}' leptidea_sinapis_rc1.gff  | sort -k1,1 -k2,2n > lepSin_Exons.int  
+
+sort -k1,1 -k2,2n ancestral_state_list_outTough_uniq_JuveSpecial.bed > ancestral_state_list_outTough_uniq_sorted_JuveSpecial.bed
+bedtools intersect -a ancestral_state_list_outTough_uniq_sorted_JuveSpecial.bed -b lepSin_Exons.bed -wa > ancestral_state_list_outTough_JuveSpecial_exonic_SNPs.bed
+bedtools intersect -a ancestral_state_list_outTough_uniq_sorted_JuveSpecial.bed -b lepSin_Exons.bed -v > ancestral_state_list_outTough_JuveSpecial_noExons.bed
+
+awk 'FNR==NR{ a[$1, $3]; next } ($1, $2) in a' ancestral_state_list_outTough_JuveSpecial_noExons.bed ancestral_state_list_outTough_uniq_JuveSpecial > ancestral_state_list_outTough_JuveSpecial_noExons
+
+
+
+
+#Ancestral state list for ALT sites as these are the sites that needs to be changed in the reference genome
+
+awk '{print $1 "\t" $2 "\t" $4}' AA_in_outgroup_HOM_alt_rep_10r20j.list > ancestral_state_list_outTough_ALT_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $4}' AA_in_outgroup_HOM_alt_lepRea.list >> ancestral_state_list_outTough_ALT_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $4}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_kaz_juv/AA_in_outgroup_HOM_alt_lepJuv-Kaz.list >> ancestral_state_list_outTough_ALT_JuveSpecial
+awk '{print $1 "\t" $2 "\t" $4}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_ire_juv/AA_in_outgroup_HOM_alt_lepJuv-Ire.list >> ancestral_state_list_outTough_ALT_JuveSpecial
+
+
+sort -u ancestral_state_list_outTough_ALT_JuveSpecial > ancestral_state_list_outTough_ALT_sorted_JuveSpecial
+awk '{if($3~/,/){next;}else{print $0}}' ancestral_state_list_outTough_ALT_sorted_JuveSpecial > ancestral_state_list_outTough_ALT_sorted_JuveSpecial_biAllelic
+
+
+
+
+
+
+
+
+
+#### Create ancestral genome sequence using ancestral_genome.sh ####
+Input: Repeat hard-masked genome
+
+./ancestral_genome.sh
+
+### Create FASTA index file for ancestral genome
+
+ml bioinfo-tools samtools/1.10
+
+samtools faidx leptidea_ancestral_JuveSpecial.fa
+
+### Mask Exons in ancestral genome
+bedtools maskfasta -fi leptidea_ancestral_JuveSpecial.fa \
+ -bed lepSin_Exons.bed \
+ -fo leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked.fa \
+ -mc N
+
+
+samtools faidx leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked.fa
+
+
+### Create 1 kb windows
+awk -f ../windows_from_fai3.awk leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked.fa.fai > leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked_1kb_windows
+
+
+###GC content in 1 kb windows from GC1kb.sh e.g. ####
+
+GENOME_path="leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked.fa"
+COORD_path="leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked_1kb_windows"
+GENOME=$(basename $GENOME_path) 
+COORD=$(basename $COORD_path)
+
+module load bioinfo-tools BEDTools/2.27.1
+
+bedtools nuc -fi $GENOME_path  -bed <(sort -k1,1 -k2,2n $COORD_path) | awk '{if(NR==1){print $0 "\t" "GC_prop_n"}else{if($13-$11==0){next;} else{gc_prop_n = ($8+$9)/($13-$11); print($0 "\t" gc_prop_n)}}}'> ${COORD}_GC1kb.final
+
+#Output: leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked_1kb_windows_GC1kb.final
+
+
+#####
+
+
+
+
+#### CpG annotation ####
+
+#First run ancestral_genome.sh on non-repeat non-exon masked genome
+#Output: leptidea_ancestral_JuveSpecial_unMasked.fa
+
+#Then run triNuc_filter.sh on the "unMasked" ancestral genome for more accurate ancestral CpG-prone annotation. In particular since triNuc_filter.awk classifies e.g. "NG" as CpG_ans, a repeat-masked genome will inflate the number of CpG-prone sites.
+
+#Unnecessary
+awk 'FNR==NR{ a[$1, $2, $3]; next } ($1, $2, $3) in a' ancestral_state_list_outTough_JuveSpecial_noExons ancestral_state_list_outTough_noExons_CpG_annot > ancestral_state_list_outTough_JuveSpecial_noExons_CpG_annot
+#
+
+awk '{if($4 == "Other"){print $1 "\t" $2 "\t" $3}}' ancestral_state_list_outTough_JuveSpecial_noExons_CpG_annot > ancestral_state_list_outTough_JuveSpecial_noExons_noCpG
+
+awk '{if($4 == "CpG_ans"){print $1 "\t" $2 "\t" $3}}' ancestral_state_list_outTough_JuveSpecial_noExons_CpG_annot > ancestral_state_list_outTough_JuveSpecial_noExons_onlyCpG
+
+
+
+#### CpG annotation for each polarisation
+
+awk '{print $1 "\t" $2 "\t" $3}' ../DAF_outgroup_10r20j_removed_repeat_content_swe_sin/AA_in_outgroup_HOM_ref_rep_10r20j.list > ancestral_state_list_sinapis
+awk '{print $1 "\t" $2 "\t" $4}' AA_in_outgroup_HOM_alt_rep_10r20j.list >> ancestral_state_list_sinapis
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_sinapis ancestral_state_list_outTough_JuveSpecial_noExons > ancestral_state_list_sinapis_noExons
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_sinapis ancestral_state_list_outTough_JuveSpecial_noExons_noCpG > ancestral_state_list_sinapis_noExons_noCpG
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_sinapis ancestral_state_list_outTough_JuveSpecial_noExons_onlyCpG > ancestral_state_list_sinapis_noExons_onlyCpG
+
+awk '{print $1 "\t" $2 "\t" $3}' ../DAF_outgroup_30s20j_removed_repeat_content_spa_rea/AA_in_outgroup_HOM_ref_lepRea.list > ancestral_state_list_reali
+awk '{print $1 "\t" $2 "\t" $4}' AA_in_outgroup_HOM_alt_lepRea.list >> ancestral_state_list_reali
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_reali ancestral_state_list_outTough_JuveSpecial_noExons > ancestral_state_list_reali_noExons
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_reali ancestral_state_list_outTough_JuveSpecial_noExons_noCpG > ancestral_state_list_reali_noExons_noCpG
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_reali ancestral_state_list_outTough_JuveSpecial_noExons_onlyCpG > ancestral_state_list_reali_noExons_onlyCpG
+
+awk '{print $1 "\t" $2 "\t" $3}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_kaz_juv/AA_in_outgroup_HOM_ref_lepJuv-Kaz.list > ancestral_state_list_juvernica_kaz
+awk '{print $1 "\t" $2 "\t" $4}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_kaz_juv/AA_in_outgroup_HOM_alt_lepJuv-Kaz.list >> ancestral_state_list_juvernica_kaz
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_juvernica_kaz ancestral_state_list_outTough_JuveSpecial_noExons > ancestral_state_list_juvernica_kaz_noExons
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_juvernica_kaz ancestral_state_list_outTough_JuveSpecial_noExons_noCpG > ancestral_state_list_juvernica_kaz_noExons_noCpG
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_juvernica_kaz ancestral_state_list_outTough_JuveSpecial_noExons_onlyCpG > ancestral_state_list_juvernica_kaz_noExons_onlyCpG
+
+awk '{print $1 "\t" $2 "\t" $3}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_ire_juv/AA_in_outgroup_HOM_ref_lepJuv-Ire.list > ancestral_state_list_juvernica_ire
+awk '{print $1 "\t" $2 "\t" $4}' ../DAF_outgroup_JuveSpecial_removed_repeat_content_ire_juv/AA_in_outgroup_HOM_alt_lepJuv-Ire.list >> ancestral_state_list_juvernica_ire
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_juvernica_ire ancestral_state_list_outTough_JuveSpecial_noExons > ancestral_state_list_juvernica_ire_noExons
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_juvernica_ire ancestral_state_list_outTough_JuveSpecial_noExons_noCpG > ancestral_state_list_juvernica_ire_noExons_noCpG
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ancestral_state_list_juvernica_ire ancestral_state_list_outTough_JuveSpecial_noExons_onlyCpG > ancestral_state_list_juvernica_ire_noExons_onlyCpG
+
+
+#### ANCESTRAL GC CONTENT
+## To obtain GC content for noExons noRepeats part of genome
+awk '{GC+=($8+$9); len+=($13-$12-$11); Oth=+$12; Ns+=$11 }END{print GC "\t" Ns "\t" Oth "\t" len "\t" GC/len}' leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked_1kb_windows_GC1kb.final
+#Output:77200684	342165463	0	240263392	0.321317
+
+
+#Make single-line fasta. awk by melissamlwong. https://cheatography.com/melissamlwong/cheat-sheets/awk-one-liners-for-fasta-manipulation-version-1-0/
+awk 'BEGIN{RS=">";FS="\n"}NR>1{seq="";for (i=2;i<=NF;i++) seq=seq""$i; print ">"$1"\n"seq}' leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked.fa > leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked.sl.fa
+
+awk 'BEGIN{RS=">";FS="\n"}NR>1{seq="";for (i=2;i<=NF;i++) seq=seq""$i; print ">"$1"\n"seq}' leptidea_ancestral_JuveSpecial_unMasked.fa > leptidea_ancestral_JuveSpecial_unMasked.sl.fa
+
+
+### Special masking for exons and repeats
+
+
+awk '{print $1 "\t" $2+1 "\t" $3-1}' N.Backstrom_leptidea.scf.1.4.fasta.out.bed lepSin_Exons.bed > repeats_exons_minus_first_and_last_bp.bed
+
+module load bioinfo-tools BEDTools/2.27.1
+
+bedtools maskfasta -fi leptidea_ancestral_JuveSpecial_unMasked.sl.fa \
+ -bed repeats_exons_minus_first_and_last_bp.bed \
+ -fo leptidea_ancestral_JuveSpecial_Exons_repeats_Minus_first_and_last_bp_Masked.fa \
+ -mc N
+
+
+#GC content of onlyCpG, i.e. putative CpG sites in the ancestral genome
+
+egrep -o "CG|TG|CA|NG|TN|CN|NA" leptidea_ancestral_JuveSpecial_Exons_repeats_Minus_first_and_last_bp_Masked.fa | awk '{split($1, a, ""); if(a[1]=="C"||a[1]=="G"){GC++}; if(a[2]=="C"||a[2]=="G"){GC++}; if($1~/N/){Ns++}}END{print GC "\t" Ns "\t" NR*2 "\t" GC/((NR*2)-Ns)}'
+#Output: 41413303	1444090	72057288	0.586481
+
+
+#GC content of noCpG: (noExons_GC-CpG_GC)/(noExons_Callable-(CpG_total_len-CpG_Ns)). MANUAL INPUT
+
+awk 'BEGIN{print (77200684 - 41413303)/(240263392 - (72057288-1444090))}'
+#Output: 0.210948
+
+
+
+
+
+
+
+##### Filter and organize SNPs in categories, produce derived allele frequency (DAF) spectra
+
+#Swedish L. sinapis (swe_sin)
+
+ml bioinfo-tools
+ml vcftools/0.1.15
+
+vcftools --gzvcf ../removed_repeat_content.vcf.gz --counts --keep ../swe_sin_inds  --out swe_sin_counts_no_REP
+
+
+#Keep only 20 calls | Filter away mitochondrial SNPs | Filter out tri- and quadallelic SNPs
+awk '{if($4 == 20)print $0}' swe_sin_counts_no_REP.frq.count | awk '{if($1~/mt/){next;}print $0}' | awk '{if($3~/3/ || $3~/4/){next;}print $0}' > swe_sin_counts_20calls_no_MT_biAllel
+
+
+#REF
+Filter for SNPs that are homozygous reference in outgroup individuals.
+awk 'FNR==NR{ a[$1, $2]; next } ($1,$2) in a' AA_in_outgroup_HOM_ref_rep_10r20j.list swe_sin_counts_20calls_no_MT_biAllel > swe_sin_counts_20calls_no_MT_biAllel_HOM_ref_10r20j
+
+#Remove sites that are invariable for homozygous reference | DAF type Hom ref.
+awk '{if($5~/20/) {next;} print $0}' swe_sin_counts_20calls_no_MT_biAllel_HOM_ref_10r20j | awk -f ../DAF_type_HOM_ref.awk > swe_sin_DAF_type_HOM_ref_10r20j
+
+#ALT
+#Filter for SNPs that are homozygous ALT in outgroup individuals.
+awk 'FNR==NR{ a[$1, $2]; next } ($1,$2) in a' AA_in_outgroup_HOM_alt_rep_10r20j.list swe_sin_counts_20calls_no_MT_biAllel > swe_sin_counts_20calls_no_MT_biAllel_HOM_alt_10r20j
+
+#Remove sites that are invariable for homozygous alternative | DAF type Hom alt.
+awk '{if($6~/20/) {next;} print $0}' swe_sin_counts_20calls_no_MT_biAllel_HOM_alt_10r20j | awk -f ../DAF_type_HOM_alt.awk > swe_sin_DAF_type_HOM_alt_10r20j
+
+
+#Combine REF and ALT
+awk '{print $0 "\t" "REF"}' swe_sin_DAF_type_HOM_ref_10r20j > swe_sin_DAF_type_HOM_ref_10r20j_pol
+awk '{print $0 "\t" "ALT"}' swe_sin_DAF_type_HOM_alt_10r20j > swe_sin_DAF_type_HOM_alt_10r20j_pol
+
+cat swe_sin_DAF_type_HOM_ref_10r20j_pol swe_sin_DAF_type_HOM_alt_10r20j_pol > swe_sin_DAF_type_comb
+
+pop="swe_sin"
+#Swe_sin list of polarised SNPs noExons
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ../ancestral_state_inference/ancestral_state_list_sinapis_noExons ${pop}_DAF_type_comb > ${pop}_DAF_type_comb_noExons
+
+
+#Genomewide DAF no Exons
+pop="swe_sin"
+
+awk '{if($8 == "REF"){if($7 == "Neutre"){print $6}} else{if($7 == "Neutre"){print$5}}}' ${pop}_DAF_type_comb_noExons |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "Neutre" "\t" $0}' >> ${pop}_genomewide_DAF_noExons
+awk '{if($8 == "REF"){if($7 == "SW"){print $6}} else{if($7 == "SW"){print$5}}}' ${pop}_DAF_type_comb_noExons |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "SW" "\t" $0}' >> ${pop}_genomewide_DAF_noExons
+awk '{if($8 == "REF"){if($7 == "WS"){print $6}} else{if($7 == "WS"){print$5}}}' ${pop}_DAF_type_comb_noExons |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n  | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "WS" "\t" $0}' >> ${pop}_genomewide_DAF_noExons
+
+
+#Swe_sin list of polarised SNPs noExons, noCpG
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ../ancestral_state_inference/ancestral_state_list_sinapis_noExons_noCpG ${pop}_DAF_type_comb > ${pop}_DAF_type_comb_noExons_noCpG
+
+
+#Genomewide DAF no Exons, no ancestral CpG sites SWE-SIN
+pop="swe_sin"
+
+awk '{if($8 == "REF"){if($7 == "Neutre"){print $6}} else{if($7 == "Neutre"){print$5}}}' ${pop}_DAF_type_comb_noExons_noCpG |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "Neutre" "\t" $0}' >> ${pop}_genomewide_DAF_noExons_noCpG 
+awk '{if($8 == "REF"){if($7 == "SW"){print $6}} else{if($7 == "SW"){print$5}}}' ${pop}_DAF_type_comb_noExons_noCpG  |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "SW" "\t" $0}' >> ${pop}_genomewide_DAF_noExons_noCpG 
+awk '{if($8 == "REF"){if($7 == "WS"){print $6}} else{if($7 == "WS"){print$5}}}' ${pop}_DAF_type_comb_noExons_noCpG  |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n  | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "WS" "\t" $0}' >> ${pop}_genomewide_DAF_noExons_noCpG 
+
+
+
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ../ancestral_state_inference/ancestral_state_list_sinapis_noExons_onlyCpG ${pop}_DAF_type_comb > ${pop}_DAF_type_comb_noExons_onlyCpG
+
+
+#Genomewide DAF no Exons, only ancestral CpG sites SWE-SIN
+pop="swe_sin"
+
+awk '{if($8 == "REF"){if($7 == "Neutre"){print $6}} else{if($7 == "Neutre"){print$5}}}' ${pop}_DAF_type_comb_noExons_onlyCpG |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "Neutre" "\t" $0}' >> ${pop}_genomewide_DAF_noExons_onlyCpG 
+awk '{if($8 == "REF"){if($7 == "SW"){print $6}} else{if($7 == "SW"){print$5}}}' ${pop}_DAF_type_comb_noExons_onlyCpG  |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "SW" "\t" $0}' >> ${pop}_genomewide_DAF_noExons_onlyCpG 
+awk '{if($8 == "REF"){if($7 == "WS"){print $6}} else{if($7 == "WS"){print$5}}}' ${pop}_DAF_type_comb_noExons_onlyCpG  |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n  | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "WS" "\t" $0}' >> ${pop}_genomewide_DAF_noExons_onlyCpG
+
+
+##Format in Excel - run in Mathematica to estimate population genetic parameters
+
+
+## Script for genomewide bootstrapping of sites
+
+SNP_list="swe_sin_DAF_type_comb_noExons"
+num_rows=$(wc -l < "$SNP_list" )
+
+for ((c=1; c<=1000; c++))
+do
+shuf -r -n $num_rows $SNP_list > SNP_list_sampled
+awk '{if($8 == "REF"){if($7 == "Neutre"){print $6}} else{if($7 == "Neutre"){print$5}}}' SNP_list_sampled |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "Neutre" "\t" $0}' >> DAF_genomewide_bs_noExons
+awk '{if($8 == "REF"){if($7 == "SW"){print $6}} else{if($7 == "SW"){print$5}}}' SNP_list_sampled |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "SW" "\t" $0}' >> DAF_genomewide_bs_noExons
+awk '{if($8 == "REF"){if($7 == "WS"){print $6}} else{if($7 == "WS"){print$5}}}' SNP_list_sampled |  sed -E 's/[A-Z]:([0-9]+)/\1/' | sort -n  | uniq -c | awk -f ../DAF_gap_fill.awk | awk -f ../transpose.awk | awk '{if(FNR==1)print "WS" "\t" $0}' >> DAF_genomewide_bs_noExons
+done
+
+#run same script for noExons_noCpg and noExons_onlyCpG. Modify output file names.
+
+
+
+
+
+
+#### π-related code
+
+#Prepare π FILE per pop using vcftools: script: sites_filt_pi.sh. E.g.
+
+ml bioinfo-tools vcftools/0.1.15
+
+vcftools --gzvcf ../removed_repeat_content.vcf.gz --site-pi --max-missing 1 --keep swe_sin_inds --out swe_sin_mm1 #mm1 means that no chromosome are allowed to have missing data per site
+
+#Output:  ${population}_mm1.sites.pi
+
+#Make a callable GC 1kb file
+awk 'NR!=1{bp=$13-$12-$11; print $4 "\t" bp "\t" $14 "\t" $8+$9}' leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked_1kb_windows_GC1kb.final > leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked_1kb_windows_GC1kb_callable_bp
+
+
+population= #Enter population here
+
+#NONULL
+awk 'function ceil(x, y){y=int(x); return(x>y?y+1:y)}; NR!=1{if($3!=0){print $1 "\t" $2-1 "\t" $2 "\t" $3 "\t" $1 "-" ceil($2/1000)}}' ${population}_mm1.sites.pi > ${population}_mm1.sites.pi_noNull.bed
+
+module load bioinfo-tools BEDTools/2.27.1
+bedtools intersect -v -a ${population}_mm1.sites.pi_noNull.bed -b ../ancestral_state_inference/lepSin_Exons.bed > ${population}_mm1.sites.pi_noNull_noExons
+
+
+awk '{a[$5]+=$4; b[$5]+=1}END{for(wind in a){print wind "\t" a[wind] "\t" b[wind]}}' ${population}_mm1.sites.pi_noNull_noExons > ${population}_mm1.sites.pi_noNull_noExons_1kb_wind_sum
+
+awk 'FNR==NR{ a[$1]=$2; b[$1]=$3; gc[$1]+=$4; next }FNR!=NR{print $1 "\t" $2 "\t" $2/a[$1] "\t" a[$1] "\t" b[$1] "\t" $3 "\t" gc[$1]}' ../leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked_1kb_windows_GC1kb_callable_bp ${population}_mm1.sites.pi_noNull_noExons_1kb_wind_sum > ${population}_mm1_1kb_pi_GC_noN_noExons
+
+
+
+
+## 
+population= #Enter population here
+
+ancestral_state_list="../ancestral_state_inference/ancestral_state_list_sinapis_noExons"
+
+#Here the names need to be changed for the polarization used. Showen here is for the L. sinapis populations.
+
+Rscript ../1kb_window_ext.R ${population}_DAF_type_HOM_ref_10r20j ${population}_DAF_type_HOM_alt_10r20j ${population}_DAF_type_1kb_windows
+
+
+awk 'function ceil(x, y){y=int(x); return(x>y?y+1:y)}; FNR==NR{a[$1,ceil($3/1000)]=$14; next} FNR!=NR{print $0 "\t" a[$1,$9]}' ../leptidea_ancestral_JuveSpecial_Exons_repeats_HardMasked_1kb_windows_GC1kb.final  ${population}_DAF_type_1kb_windows > ${population}_DAF_type_1kb_windows_GC
+
+
+awk 'FNR==NR{ a[$1, $2]; next } ($1, $2) in a' ${ancestral_state_list} ${population}_DAF_type_1kb_windows_GC > ${population}_noExons_GC
+
+sort -k10,10n -k1,1n -k2,2n ${population}_noExons_GC > ${population}_noExons_GC_sort
+
+
+awk '{scaf=$1; window=$9; print $0 "\t" scaf "-" window}' ${population}_noExons_GC_sort > ${population}_noExons_GC_scafWind
+
+
+
+### Make GC centiles and estimate parameters per centile using GC centile script.
+#Input: 
+SNPs_per_C=$(wc -l ${population}_noExons_GC_scafWind | cut -f1 -d ' ' | awk '{print int($1/100)}')
+
+
+#Output: DAF_noExons_GC_totalPi_newGC ${population}_noExons_GC[1-100]
+
+
+
+
+
+
