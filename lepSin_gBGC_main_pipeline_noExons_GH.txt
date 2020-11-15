@@ -2,7 +2,7 @@
 
 #Produce lists of SNPs in which outgroups are all homozygous reference (REF) or homozygous alternative (ALT). N.B no missing data allowed here.
 
-#Script: AA_in_outgroups.sh - sub-dependency: GT_AA_outgroups_HOM_ref_*focal pop*.awk and GT_AA_outgroups_HOM_alt_*focal pop*.awk
+#Script: AA_in_outgroups.sh - sub-dependency: GT_AA_outgroups_HOM_ref_${pop}.awk and GT_AA_outgroups_HOM_alt_${pop}.awk
 
 #Example from Kaz-juv
 
