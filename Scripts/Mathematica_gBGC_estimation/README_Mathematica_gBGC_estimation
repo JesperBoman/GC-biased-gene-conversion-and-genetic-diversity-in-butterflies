@@ -1,0 +1,9 @@
+Here are files I modified from scripts provided by Glémin et al. 2015.
+
+The main inference model is entirely due to Muyle et al. 2011 and Glémin et al. 2015
+so if you use these scripts I encourage you to read and cite those studies.
+
+
+References:
+Glémin, S., Arndt, P. F., Messer, P. W., Petrov, D., Galtier, N., & Duret, L. (2015). Quantification of GC-biased gene conversion in the human genome. Genome Research, 25(8), 1215–1228. https://doi.org/10.1101/gr.185488.114
+Muyle, A., Serres-Giardi, L., Ressayre, A., Escobar, J., & Glémin, S. (2011). GC-Biased Gene Conversion and Selection Affect GC Content in the Oryza Genus (rice). Molecular Biology and Evolution, 28(9), 2695–2706. https://doi.org/10.1093/molbev/msr104
